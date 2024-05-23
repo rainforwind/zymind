@@ -2,17 +2,21 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
 import { z } from 'zod';
-import { Client } from 'pg';
-import type { User } from '@/app/lib/definitions';
+import { JSONFilePreset } from 'lowdb/node'
 import bcrypt from 'bcrypt';
+import type { User } from '@/app/lib/definitions';
 
 async function getUser(email: string): Promise<User | undefined> {
   try {
-    const client = new Client();
-    await client.connect();
+    const defaultData = { users: [] }
+    const db = await JSONFilePreset('var/db.json', defaultData);
+    await db.read();
+    // db.update(({users})=>{users.push({email:"xxx", password:bcrypt.hashSync("xxx",15)})})
+    // await db.write();
 
-    const user: { rows: User[] } = await client.query(`SELECT * FROM users WHERE email='${email}'`);
-    return user.rows[0];
+    const users: User[] = await db.data.users.filter(({email: record_email}) => record_email === email);
+    console.log(users)
+    return users[0];
   } catch (error) {
     console.error('Failed to fetch user:', error);
     throw new Error('Failed to fetch user.');
